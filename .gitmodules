@@ -1,7 +1,7 @@
 [submodule "pash"]
 	path = pash
-	url = https://github.com/binpash/pash.git
+	url = https://github.com/huangworld/pash.git
 	branch = dspash-future
 [submodule "docker-hadoop"]
 	path = docker-hadoop
-	url = https://github.com/binpash/docker-hadoop
+	url = https://github.com/huangworld/docker-hadoop
