@@ -14,6 +14,7 @@ fi
 # TODO: install any extra needed python deps
 pip3 install flask
 pip3 install requests --target "$PASH_TOP/python_pkgs/"
+pip3 install docker --target "$PASH_TOP/python_pkgs/"
 
 # Install Go
 wget https://go.dev/dl/go1.17.7.linux-amd64.tar.gz
