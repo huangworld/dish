@@ -17,36 +17,27 @@ scripts_inputs=(
       "shortest-scripts;all_cmdsx100.txt"
   )
 
-oneliners_bash() {
-    outputs_dir="outputs"
-    seq_times_file="seq.res"
-    seq_outputs_suffix="seq.out"
+# scripts_num_subgraphs=(
+#     "nfa-regex;1"
+#     "sort;1"
+#     "top-n;1"
+#     "wf;1"
+#     "spell;1"
+#     "diff;2"
+#     "bi-grams;1"
+#     "set-diff;2"
+#     "sort-sort;1"
+#     "shortest-scripts;1"
+# )
+# declare -A num_subgraphs_map
 
-    mkdir -p "$outputs_dir"
-
-    touch "$seq_times_file"
-    cat $seq_times_file >> $seq_times_file.d
-    echo executing one-liners $(date) | tee "$seq_times_file"
-    echo '' >> "$seq_times_file"
-
-    for script_input in ${scripts_inputs[@]}
-    do
-    IFS=";" read -r -a script_input_parsed <<< "${script_input}"
-    script="${script_input_parsed[0]}"
-    input="${script_input_parsed[1]}"
-
-    export IN="/oneliners/$input"
-    export dict=
-
-    printf -v pad %30s
-    padded_script="${script}.sh:${pad}"
-    padded_script=${padded_script:0:30}
-
-    seq_outputs_file="${outputs_dir}/${script}.${seq_outputs_suffix}"
-
-    echo "${padded_script}" $({ time ./${script}.sh > "$seq_outputs_file"; } 2>&1) | tee -a "$seq_times_file"
-    done
-}
+# # Populate the associative array
+# for num_subgraph in "${scripts_num_subgraphs[@]}"; do
+#   IFS=";" read -r -a subgraph_info <<< "$num_subgraph"
+#   script_name="${subgraph_info[0]}"
+#   num_subgraphs="${subgraph_info[1]}"
+#   num_subgraphs_map["$script_name"]=$num_subgraphs
+# done
 
 oneliners_pash(){
   flags=${1:-$PASH_FLAGS}
@@ -90,48 +81,26 @@ oneliners_pash(){
   done
 }
 
-oneliners_hadoopstreaming(){
-  jarpath="/opt/hadoop-3.2.2/share/hadoop/tools/lib/hadoop-streaming-3.2.2.jar" # Adjust as required
-  basepath="" # Adjust as required
-  times_file="hadoopstreaming.res"
-  outputs_suffix="hadoopstreaming.out"
-  outputs_dir="/outputs/hadoop-streaming/oneliners"
-  . bi-gram.aux.sh
+oneliners_faults() {
+  # For faults, mock crash for all workers
+  num_workers=3
+  # it's important to set the timeout long enough for now to avoid the "crashed" worker coming back alive while its replacement does work
+  # until it's fully supported! 
+  timeout=100
 
-  cd "hadoop-streaming/"
-
-  hdfs dfs -rm -r "$outputs_dir"
-  hdfs dfs -mkdir -p "$outputs_dir"
-
-  touch "$times_file"
-  cat "$times_file" >> "$times_file".d
-  echo executing oneliners $(date) | tee "$times_file"
-  echo '' >> "$times_file"
-
-  while IFS= read -r line; do
-      printf -v pad %20s
-      name=$(cut -d "#" -f2- <<< "$line")
-      name=$(sed "s/ //g" <<< $name)
-      padded_script="${name}.sh:${pad}"
-      padded_script=${padded_script:0:20} 
-      echo "${padded_script}" $({ time { eval $line &> /dev/null; } } 2>&1) | tee -a "$times_file"
-  done <"run_all.sh"
-  cd ".."
-  mv "hadoop-streaming/$times_file" .
+  for ((i = 1; i <= num_workers; i++)); do
+    crashed_worker="worker$i"
+    echo Mocking crash for $crashed_worker with timeout of $timeout seconds
+    echo ----------------------------------------------------------------
+    oneliners_pash "$PASH_FLAGS --distributed_exec --worker_timeout 100 --worker_timeout_choice worker$i" "faults_$crashed_worker"
+    # echo "Iteration $i"
+    # Your loop body here
+  done
 }
 
 outputs_dir="outputs"
 rm -rf "$outputs"
 
-# oneliners_bash
-
-# oneliners_pash "$PASH_FLAGS" "par"
-
 oneliners_pash "$PASH_FLAGS --distributed_exec" "distr"
 
-# it's important to set the timeout long enough for now to avoid the "crashed" worker coming back alive while its replacement does work
-# until it's fully supported!
-oneliners_pash "$PASH_FLAGS --distributed_exec --worker_timeout 100" "faults"
-
-
-# oneliners_hadoopstreaming
+oneliners_faults
